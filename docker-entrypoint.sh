@@ -15,7 +15,9 @@ chown -R apple:apple /app/xylor
 
 # Start Frappe in the background
 cd /app/p101-bench
-su -c "bench start --port 8000" apple &
+# Initialize bench if needed
+su -c "cd /app/p101-bench && bench setup requirements" apple
+su -c "cd /app/p101-bench && bench start" apple &
 FRAPPE_PID=$!
 
 # Start Next.js
