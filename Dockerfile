@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y \
     npm \
     redis-server \
     nginx \
+    python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Frappe builder
@@ -45,6 +46,12 @@ COPY --from=frappe-builder /usr/local/bin/bench /usr/local/bin/bench
 # Copy existing Frappe application
 COPY p101-bench/ /app/p101-bench/
 WORKDIR /app/p101-bench
+
+# Initialize Python virtual environment and install dependencies
+RUN python3 -m venv env && \
+    . env/bin/activate && \
+    pip install --no-cache-dir -U pip wheel && \
+    pip install --no-cache-dir frappe-bench
 
 # Copy Next.js build
 COPY --from=nextjs-builder /app/xylor/.next /app/xylor/.next
@@ -66,4 +73,11 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 # Start both services
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Set proper permissions
+RUN chown -R apple:apple /app
+
+# Switch to apple user
+USER apple
+
 ENTRYPOINT ["docker-entrypoint.sh"]
