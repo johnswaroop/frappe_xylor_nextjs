@@ -22,6 +22,9 @@ RUN pip3 install --no-cache-dir frappe-bench
 FROM python:3.11-slim
 WORKDIR /app
 
+# Create frappe user and group
+RUN groupadd -r frappe && useradd -r -g frappe -d /home/frappe -m -s /bin/bash frappe
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     python3-dev \
