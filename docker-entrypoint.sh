@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-export FRAPPE_USER=frappe
+export FRAPPE_USER=apple
 
 # Start Redis
 service redis-server start
@@ -10,17 +10,17 @@ service redis-server start
 service nginx start
 
 # Change ownership of required directories
-chown -R frappe:frappe /app/p101-bench
-chown -R frappe:frappe /app/xylor
+chown -R apple:apple /app/p101-bench
+chown -R apple:apple /app/xylor
 
 # Start Frappe in the background
 cd /app/p101-bench
-su -c "bench start --port 8000" frappe &
+su -c "bench start --port 8000" apple &
 FRAPPE_PID=$!
 
 # Start Next.js
 cd /app/xylor
-su -c "npm start" frappe &
+su -c "npm start" apple &
 NEXT_PID=$!
 
 # Function to handle shutdown

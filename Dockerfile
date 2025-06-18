@@ -22,8 +22,8 @@ RUN pip3 install --no-cache-dir frappe-bench
 FROM python:3.11-slim
 WORKDIR /app
 
-# Create frappe user and group
-RUN groupadd -r frappe && useradd -r -g frappe -d /home/frappe -m -s /bin/bash frappe
+# Create apple user and group
+RUN groupadd -r apple && useradd -r -g apple -d /home/apple -m -s /bin/bash apple
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
