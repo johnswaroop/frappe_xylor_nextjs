@@ -1,3 +1,4 @@
+#comment
 # Build stage for Next.js
 FROM node:18-alpine AS nextjs-builder
 WORKDIR /app/xylor
