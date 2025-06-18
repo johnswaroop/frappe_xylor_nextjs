@@ -1,4 +1,4 @@
-import {
+import type {
   ERPNextProject,
   ERPNextTask,
   ERPNextIssue,
@@ -7,7 +7,7 @@ import {
   UITask,
   UIIssue,
   UICommunication,
-} from "./types/erpnext";
+} from "../lib/types/erpnext";
 
 // Transform ERPNext Project to UI Project format
 export function transformProject(erpProject: ERPNextProject): UIProject {
@@ -25,11 +25,22 @@ export function transformProject(erpProject: ERPNextProject): UIProject {
 
 // Transform ERPNext Task to UI Task format
 export function transformTask(erpTask: ERPNextTask): UITask {
+  const isValidPriority = (
+    priority: string
+  ): priority is "Low" | "Medium" | "High" | "Urgent" => {
+    return ["Low", "Medium", "High", "Urgent"].includes(priority);
+  };
+
+  const priority = erpTask.priority || "Medium";
+  if (!isValidPriority(priority)) {
+    throw new Error(`Invalid priority value: ${priority}`);
+  }
+
   return {
     id: erpTask.name,
     subject: erpTask.subject,
     status: erpTask.status,
-    priority: erpTask.priority || "Medium",
+    priority,
     assigned_to: erpTask.assigned_to || "Unassigned",
     exp_start_date:
       erpTask.exp_start_date || new Date().toISOString().split("T")[0],
