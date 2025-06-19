@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateRandomAlphanumeric } from "@/lib/util";
 import { AccessToken, TrackSource } from "livekit-server-sdk";
 import type { AccessTokenOptions, VideoGrant } from "livekit-server-sdk";
-import { TokenResult } from "@/lib/types";
+import { TokenResult } from "@/livekitdep/types";
 
 const apiKey = process.env.LIVEKIT_API_KEY;
 const apiSecret = process.env.LIVEKIT_API_SECRET;

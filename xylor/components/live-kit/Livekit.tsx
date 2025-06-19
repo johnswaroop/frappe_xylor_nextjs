@@ -12,7 +12,7 @@ import {
 } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { RoomOptions, VideoPresets, ParticipantKind } from "livekit-client";
-import { TokenResult } from "@/lib/types";
+import { TokenResult } from "@/livekitdep/types";
 import { TaggedContext } from "@/lib/mock-data";
 
 // LiveKit server URL - update this to match your LiveKit server
