@@ -3,22 +3,48 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   basePath: "/xylor-ai",
-  webpack: (config) => {
+
+  // Server-specific optimizations
+  experimental: {
+    esmExternals: true,
+  },
+
+  webpack: (config, { isServer }) => {
     // Add path aliases for better module resolution
     config.resolve.alias = {
       ...config.resolve.alias,
-      "@": path.resolve(__dirname),
-      "@/lib": path.resolve(__dirname, "lib"),
-      "@/components": path.resolve(__dirname, "components"),
-      "@/app": path.resolve(__dirname, "app"),
-      "@/hooks": path.resolve(__dirname, "hooks"),
+      "@": path.resolve(process.cwd()),
+      "@/lib": path.resolve(process.cwd(), "lib"),
+      "@/components": path.resolve(process.cwd(), "components"),
+      "@/app": path.resolve(process.cwd(), "app"),
+      "@/hooks": path.resolve(process.cwd(), "hooks"),
     };
 
-    // Ensure proper module resolution
+    // Ensure proper module resolution for both server and client
     config.resolve.modules = [
-      path.resolve(__dirname),
-      path.resolve(__dirname, "node_modules"),
+      path.resolve(process.cwd()),
+      path.resolve(process.cwd(), "node_modules"),
       "node_modules",
+    ];
+
+    // Server-specific configuration
+    if (isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        os: false,
+      };
+    }
+
+    // Ensure file extensions are resolved properly
+    config.resolve.extensions = [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".jsx",
+      ".json",
+      ...config.resolve.extensions,
     ];
 
     return config;

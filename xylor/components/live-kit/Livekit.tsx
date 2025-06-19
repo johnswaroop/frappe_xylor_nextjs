@@ -13,7 +13,7 @@ import {
 import "@livekit/components-styles";
 import { RoomOptions, VideoPresets, ParticipantKind } from "livekit-client";
 import { TokenResult } from "@/lib/types";
-import { type TaggedContext } from "@/lib/mock-data";
+import { TaggedContext } from "@/lib/mock-data";
 
 // LiveKit server URL - update this to match your LiveKit server
 const serverUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL || "wss://localhost:7880";
