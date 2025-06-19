@@ -1,27 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateRandomAlphanumeric } from "@/lib/util";
 import { AccessToken, TrackSource } from "livekit-server-sdk";
 import type { AccessTokenOptions, VideoGrant } from "livekit-server-sdk";
-
-interface TokenResult {
-  identity: string;
-  accessToken: string;
-}
+import { TokenResult } from "@/lib/types";
 
 const apiKey = process.env.LIVEKIT_API_KEY;
 const apiSecret = process.env.LIVEKIT_API_SECRET;
-
-function generateRandomAlphanumeric(length: number): string {
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  const charactersLength = characters.length;
-
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-
-  return result;
-}
 
 const createToken = (userInfo: AccessTokenOptions, grant: VideoGrant) => {
   const at = new AccessToken(apiKey, apiSecret, userInfo);
