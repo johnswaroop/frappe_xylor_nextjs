@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateRandomAlphanumeric } from "../../../lib/util";
+import { generateRandomAlphanumeric } from "@/lib/util";
 import { AccessToken, TrackSource } from "livekit-server-sdk";
 import type { AccessTokenOptions, VideoGrant } from "livekit-server-sdk";
 import { TokenResult } from "@/lib/types";
