@@ -26,11 +26,370 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { type TaggedContext } from "@/lib/mock-data";
 import {
-  useProjects,
-  useTasks,
-  useIssues,
-  useCommunications,
+  useAllData,
+  useAllProjectDataAsJSON,
 } from "@/lib/hooks/use-frappe-data";
+
+import LiveKitPage from "@/components/live-kit/Livekit";
+
+interface AIAssistantChatProps {
+  taggedContext: TaggedContext[];
+  chatActiveTab: string;
+  structuredData?: {
+    projects?: Array<{
+      name: string;
+      project_name: string;
+      status: string;
+      percent_complete?: number;
+      customer?: string;
+      expected_end_date?: string;
+    }>;
+    tasks?: Array<{
+      name: string;
+      subject: string;
+      status: string;
+      priority: string;
+      progress?: number;
+      project?: string;
+    }>;
+    issues?: Array<{
+      name: string;
+      subject: string;
+      status: string;
+      priority: string;
+      project?: string;
+    }>;
+    communications?: Array<{
+      name: string;
+      communication_type: string;
+      sender: string;
+      recipients: string | string[];
+      subject?: string;
+      content: string;
+      communication_date: string;
+      reference_doctype: string;
+      reference_name: string;
+    }>;
+    [key: string]: unknown; // Allow for additional properties
+  };
+}
+
+function AIAssistantChat({
+  taggedContext,
+  chatActiveTab,
+  structuredData,
+}: AIAssistantChatProps) {
+  const { messages, input, handleInputChange, handleSubmit, isLoading, stop } =
+    useChat({
+      api: "/xylor-ai/api/chat",
+      body: {
+        taggedContext: taggedContext,
+        structuredData: structuredData, // Pass comprehensive data to AI
+      },
+    });
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    const chatContainer = document.getElementById("chat-messages");
+    if (chatContainer) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+  }, [messages]);
+
+  return (
+    <div className="flex flex-col flex-1">
+      {/* Chat Header */}
+      <div className="p-6 border-b border-gray-200">
+        <div className="mt-4">
+          {chatActiveTab === "ai-assistant" && (
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">
+                AI Assistant
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Ask questions about your projects and tasks
+              </p>
+            </div>
+          )}
+
+          {chatActiveTab === "voice-agent" && (
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">
+                Voice Agent
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Ask questions about your projects and tasks
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Chat Messages Area */}
+      <div className="flex-1 overflow-y-auto" id="chat-messages">
+        <div className="p-6">
+          {/* Message Display */}
+          {messages.map((message, index) => {
+            const isUser = message.role === "user";
+            const isLastMessage = index === messages.length - 1;
+            const isStreaming = isLastMessage && !isUser && isLoading;
+
+            return (
+              <div
+                key={message.id || index}
+                className={`mb-4 flex ${
+                  isUser ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    isUser
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-900 border border-gray-200"
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap text-sm">
+                    {message.content}
+                    {isStreaming && (
+                      <span className="inline-block w-2 h-4 bg-current opacity-75 animate-pulse ml-1" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Loading Indicator for Initial Response */}
+          {isLoading &&
+            messages.length > 0 &&
+            messages[messages.length - 1]?.role === "user" && (
+              <div className="flex justify-start mb-4">
+                <div className="bg-gray-100 text-gray-900 border border-gray-200 rounded-lg px-4 py-2">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">AI is thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          {/* Welcome Message */}
+          {messages.length === 0 && (
+            <div className="flex items-center justify-center h-full min-h-[400px]">
+              <div className="text-center max-w-md">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="text-2xl">🤖</div>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Welcome to your AI Assistant
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Tag projects, tasks, or issues from the left panel to provide
+                  context, then ask me anything about your work.
+                </p>
+                <div className="bg-gray-50 rounded-lg p-4 text-left">
+                  <div className="text-sm font-medium text-gray-900 mb-2">
+                    Try asking:
+                  </div>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>
+                      • &quot;What&apos;s the status of my projects?&quot;
+                    </li>
+                    <li>• &quot;Which tasks are overdue?&quot;</li>
+                    <li>• &quot;Summarize recent communications&quot;</li>
+                    <li>• &quot;What should I prioritize next?&quot;</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Chat Input Area */}
+      <div className="border-t border-gray-200 p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Quick Actions */}
+          {taggedContext.length > 0 && (
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs h-8"
+                onClick={() => {
+                  const event = {
+                    target: {
+                      value: "What's the current status of my tagged projects?",
+                    },
+                  } as React.ChangeEvent<HTMLInputElement>;
+                  handleInputChange(event);
+                }}
+              >
+                📊 Project Status
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs h-8"
+                onClick={() => {
+                  const event = {
+                    target: {
+                      value: "What tasks are overdue or need attention?",
+                    },
+                  } as React.ChangeEvent<HTMLInputElement>;
+                  handleInputChange(event);
+                }}
+              >
+                ⏰ Overdue Tasks
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs h-8"
+                onClick={() => {
+                  const event = {
+                    target: {
+                      value: "Summarize recent communications and activities",
+                    },
+                  } as React.ChangeEvent<HTMLInputElement>;
+                  handleInputChange(event);
+                }}
+              >
+                💬 Communications
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs h-8"
+                onClick={() => {
+                  const event = {
+                    target: { value: "What should I prioritize next?" },
+                  } as React.ChangeEvent<HTMLInputElement>;
+                  handleInputChange(event);
+                }}
+              >
+                🎯 Next Steps
+              </Button>
+            </div>
+          )}
+
+          {/* Input Field */}
+          <div className="flex gap-3">
+            <div className="flex-1 relative">
+              <Input
+                value={input}
+                onChange={handleInputChange}
+                placeholder={
+                  taggedContext.length > 0
+                    ? "Ask about your tagged items..."
+                    : "Tag some projects or tasks first, then ask me anything..."
+                }
+                disabled={isLoading}
+                className="pr-12 min-h-[44px] resize-none border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    const form = e.currentTarget.form;
+                    if (form) {
+                      const formEvent = new Event("submit", {
+                        bubbles: true,
+                        cancelable: true,
+                      });
+                      form.dispatchEvent(formEvent);
+                    }
+                  }
+                }}
+              />
+              {isLoading && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                </div>
+              )}
+            </div>
+            <Button
+              type="submit"
+              disabled={!input.trim() || isLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white min-w-[44px] h-[44px]"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <span className="text-lg">→</span>
+              )}
+            </Button>
+            {isLoading && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={stop}
+                className="min-w-[60px] h-[44px] border-red-200 text-red-600 hover:bg-red-50"
+              >
+                Stop
+              </Button>
+            )}
+          </div>
+
+          {/* Context Info */}
+          {taggedContext.length === 0 && (
+            <div className="text-xs text-gray-500 flex items-center gap-2">
+              <Pin className="h-3 w-3" />
+              Tip: Click the pin icons (📌) on projects, tasks, or issues to add
+              context
+            </div>
+          )}
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function VoiceAgentChat({
+  taggedContext,
+  chatActiveTab,
+  structuredData,
+}: AIAssistantChatProps) {
+  console.log("Voice Agent Chat", taggedContext);
+
+  return (
+    <div className="flex flex-col flex-1">
+      {/* Chat Header */}
+      <div className="p-6 border-b border-gray-200">
+        <div className="mt-4">
+          {chatActiveTab === "ai-assistant" && (
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">
+                AI Assistant
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Ask questions about your projects and tasks
+              </p>
+            </div>
+          )}
+
+          {chatActiveTab === "voice-agent" && (
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">
+                Voice Agent
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Ask questions about your projects and tasks
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+      <LiveKitPage
+        taggedContext={taggedContext}
+        structuredData={structuredData}
+      />
+    </div>
+  );
+}
 
 export default function AIAssistantPage() {
   const [taggedContext, setTaggedContext] = useState<TaggedContext[]>([]);
@@ -39,36 +398,36 @@ export default function AIAssistantPage() {
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(
     new Set()
   );
+  const [chatActiveTab, setChatActiveTab] = useState("ai-assistant");
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, stop } =
-    useChat({
-      api: "/xylor-ai/api/chat",
-      body: {
-        taggedContext: taggedContext,
-      },
-    });
+  // Use comprehensive Frappe data hooks for better organization
+  const {
+    projects: {
+      data: projects = [],
+      isLoading: projectsLoading,
+      error: projectsError,
+    },
+    tasks: { data: tasks = [], isLoading: tasksLoading, error: tasksError },
+    issues: { data: issues = [], isLoading: issuesLoading, error: issuesError },
+    communications: {
+      data: communications = [],
+      isLoading: communicationsLoading,
+      error: communicationsError,
+    },
+    isLoading: allDataLoading,
+    isError: allDataError,
+  } = useAllData();
 
-  // Use real Frappe data for all entities
-  const {
-    data: projects = [],
-    isLoading: projectsLoading,
-    error: projectsError,
-  } = useProjects();
-  const {
-    data: tasks = [],
-    isLoading: tasksLoading,
-    error: tasksError,
-  } = useTasks();
-  const {
-    data: issues = [],
-    isLoading: issuesLoading,
-    error: issuesError,
-  } = useIssues();
-  const {
-    data: communications = [],
-    isLoading: communicationsLoading,
-    error: communicationsError,
-  } = useCommunications();
+  // Get comprehensive structured data for AI context
+  const { data: structuredData } = useAllProjectDataAsJSON();
+
+  // Check if any data is loading - use comprehensive loading state
+  const isAnyLoading =
+    allDataLoading ||
+    projectsLoading ||
+    tasksLoading ||
+    issuesLoading ||
+    communicationsLoading;
 
   const toggleProjectExpansion = (projectId: string) => {
     setExpandedProjects((prev) => {
@@ -276,18 +635,6 @@ export default function AIAssistantPage() {
         comm.subject.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Check if any data is loading
-  const isAnyLoading =
-    projectsLoading || tasksLoading || issuesLoading || communicationsLoading;
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    const chatContainer = document.getElementById("chat-messages");
-    if (chatContainer) {
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-  }, [messages]);
-
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Left Column - ERPNext Context Panel */}
@@ -392,12 +739,14 @@ export default function AIAssistantPage() {
             {(projectsError ||
               tasksError ||
               issuesError ||
-              communicationsError) && (
+              communicationsError ||
+              allDataError) && (
               <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-start">
                   <AlertCircle className="h-5 w-5 text-red-600 mr-3 mt-0.5" />
                   <div className="text-sm text-red-800">
                     <div className="font-medium mb-1">Error loading data</div>
+                    {allDataError && <div>• General data loading error</div>}
                     {projectsError && (
                       <div>• Projects: {projectsError.message}</div>
                     )}
@@ -860,295 +1209,106 @@ export default function AIAssistantPage() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Context Chips */}
+        {taggedContext.length > 0 && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-blue-900">
+                Active Context
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllTags}
+                className="text-blue-700 hover:text-blue-900 h-6 text-xs"
+              >
+                Clear All
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {taggedContext.map((item) => (
+                <div
+                  key={`${item.type}-${item.id}`}
+                  className="flex items-center gap-2 bg-white border border-blue-200 text-blue-800 text-xs px-3 py-1.5 rounded-full"
+                >
+                  <span className="capitalize font-medium">{item.type}:</span>
+                  <span className="truncate max-w-32">{item.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 hover:bg-transparent"
+                    onClick={() => toggleTag(item.type, item.id, item.name)}
+                  >
+                    <PinOff className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right Column - AI Chat Interface */}
       <div className="w-3/5 flex flex-col bg-white">
-        {/* Chat Header */}
+        {/* Chat Tab Switcher */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">
-                AI Assistant
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Ask questions about your projects and tasks
-              </p>
-            </div>
-            {/* Tagged Context Display */}
-            {taggedContext.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Context:</span>
-                <Badge
-                  variant="secondary"
-                  className="bg-blue-50 text-blue-700 border-blue-200"
-                >
-                  {taggedContext.length} item
-                  {taggedContext.length !== 1 ? "s" : ""} tagged
-                </Badge>
-              </div>
-            )}
-          </div>
-
-          {/* Context Chips */}
-          {taggedContext.length > 0 && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-blue-900">
-                  Active Context
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearAllTags}
-                  className="text-blue-700 hover:text-blue-900 h-6 text-xs"
-                >
-                  Clear All
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {taggedContext.map((item) => (
-                  <div
-                    key={`${item.type}-${item.id}`}
-                    className="flex items-center gap-2 bg-white border border-blue-200 text-blue-800 text-xs px-3 py-1.5 rounded-full"
+            <Tabs
+              value={chatActiveTab}
+              onValueChange={setChatActiveTab}
+              className="w-full"
+            >
+              <div className="flex items-center justify-between">
+                <TabsList className="grid w-64 grid-cols-2 bg-gray-50 p-1">
+                  <TabsTrigger
+                    value="ai-assistant"
+                    className="text-sm font-medium"
                   >
-                    <span className="capitalize font-medium">{item.type}:</span>
-                    <span className="truncate max-w-32">{item.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-4 w-4 p-0 hover:bg-transparent"
-                      onClick={() => toggleTag(item.type, item.id, item.name)}
+                    AI Assistant
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="voice-agent"
+                    className="text-sm font-medium"
+                  >
+                    Voice Agent
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Tagged Context Display */}
+                {taggedContext.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Context:</span>
+                    <Badge
+                      variant="secondary"
+                      className="bg-blue-50 text-blue-700 border-blue-200"
                     >
-                      <PinOff className="h-3 w-3" />
-                    </Button>
+                      {taggedContext.length} item
+                      {taggedContext.length !== 1 ? "s" : ""} tagged
+                    </Badge>
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Chat Messages Area */}
-        <div className="flex-1 overflow-y-auto" id="chat-messages">
-          <div className="p-6">
-            {/* Message Display */}
-            {messages.map((message, index) => {
-              const isUser = message.role === "user";
-              const isLastMessage = index === messages.length - 1;
-              const isStreaming = isLastMessage && !isUser && isLoading;
-
-              return (
-                <div
-                  key={message.id || index}
-                  className={`mb-4 flex ${
-                    isUser ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                      isUser
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-900 border border-gray-200"
-                    }`}
-                  >
-                    <div className="whitespace-pre-wrap text-sm">
-                      {message.content}
-                      {isStreaming && (
-                        <span className="inline-block w-2 h-4 bg-current opacity-75 animate-pulse ml-1" />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Loading Indicator for Initial Response */}
-            {isLoading &&
-              messages.length > 0 &&
-              messages[messages.length - 1]?.role === "user" && (
-                <div className="flex justify-start mb-4">
-                  <div className="bg-gray-100 text-gray-900 border border-gray-200 rounded-lg px-4 py-2">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">AI is thinking...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            {/* Welcome Message */}
-            {messages.length === 0 && (
-              <div className="flex items-center justify-center h-full min-h-[400px]">
-                <div className="text-center max-w-md">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <div className="text-2xl">🤖</div>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Welcome to your AI Assistant
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Tag projects, tasks, or issues from the left panel to
-                    provide context, then ask me anything about your work.
-                  </p>
-                  <div className="bg-gray-50 rounded-lg p-4 text-left">
-                    <div className="text-sm font-medium text-gray-900 mb-2">
-                      Try asking:
-                    </div>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      <li>
-                        • &quot;What&apos;s the status of my projects?&quot;
-                      </li>
-                      <li>• &quot;Which tasks are overdue?&quot;</li>
-                      <li>• &quot;Summarize recent communications&quot;</li>
-                      <li>• &quot;What should I prioritize next?&quot;</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
+            </Tabs>
           </div>
         </div>
 
-        {/* Chat Input Area */}
-        <div className="border-t border-gray-200 p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Quick Actions */}
-            {taggedContext.length > 0 && (
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8"
-                  onClick={() => {
-                    const event = {
-                      target: {
-                        value:
-                          "What's the current status of my tagged projects?",
-                      },
-                    } as React.ChangeEvent<HTMLInputElement>;
-                    handleInputChange(event);
-                  }}
-                >
-                  📊 Project Status
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8"
-                  onClick={() => {
-                    const event = {
-                      target: {
-                        value: "What tasks are overdue or need attention?",
-                      },
-                    } as React.ChangeEvent<HTMLInputElement>;
-                    handleInputChange(event);
-                  }}
-                >
-                  ⏰ Overdue Tasks
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8"
-                  onClick={() => {
-                    const event = {
-                      target: {
-                        value: "Summarize recent communications and activities",
-                      },
-                    } as React.ChangeEvent<HTMLInputElement>;
-                    handleInputChange(event);
-                  }}
-                >
-                  💬 Communications
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-8"
-                  onClick={() => {
-                    const event = {
-                      target: { value: "What should I prioritize next?" },
-                    } as React.ChangeEvent<HTMLInputElement>;
-                    handleInputChange(event);
-                  }}
-                >
-                  🎯 Next Steps
-                </Button>
-              </div>
-            )}
+        {/* AI Chat Component */}
+        {chatActiveTab === "ai-assistant" && (
+          <AIAssistantChat
+            taggedContext={taggedContext}
+            chatActiveTab={chatActiveTab}
+            structuredData={structuredData}
+          />
+        )}
 
-            {/* Input Field */}
-            <div className="flex gap-3">
-              <div className="flex-1 relative">
-                <Input
-                  value={input}
-                  onChange={handleInputChange}
-                  placeholder={
-                    taggedContext.length > 0
-                      ? "Ask about your tagged items..."
-                      : "Tag some projects or tasks first, then ask me anything..."
-                  }
-                  disabled={isLoading}
-                  className="pr-12 min-h-[44px] resize-none border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      const form = e.currentTarget.form;
-                      if (form) {
-                        const formEvent = new Event("submit", {
-                          bubbles: true,
-                          cancelable: true,
-                        });
-                        form.dispatchEvent(formEvent);
-                      }
-                    }
-                  }}
-                />
-                {isLoading && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                  </div>
-                )}
-              </div>
-              <Button
-                type="submit"
-                disabled={!input.trim() || isLoading}
-                className="bg-blue-600 hover:bg-blue-700 text-white min-w-[44px] h-[44px]"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <span className="text-lg">→</span>
-                )}
-              </Button>
-              {isLoading && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={stop}
-                  className="min-w-[60px] h-[44px] border-red-200 text-red-600 hover:bg-red-50"
-                >
-                  Stop
-                </Button>
-              )}
-            </div>
-
-            {/* Context Info */}
-            {taggedContext.length === 0 && (
-              <div className="text-xs text-gray-500 flex items-center gap-2">
-                <Pin className="h-3 w-3" />
-                Tip: Click the pin icons (📌) on projects, tasks, or issues to
-                add context
-              </div>
-            )}
-          </form>
-        </div>
+        {chatActiveTab === "voice-agent" && (
+          <VoiceAgentChat
+            taggedContext={taggedContext}
+            chatActiveTab={chatActiveTab}
+            structuredData={structuredData}
+          />
+        )}
       </div>
     </div>
   );

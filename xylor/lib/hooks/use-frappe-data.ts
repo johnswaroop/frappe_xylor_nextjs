@@ -197,3 +197,46 @@ export function useAllData() {
       usersQuery.error,
   };
 }
+
+// Comprehensive data hook that returns all project data as JSON for AI context
+export function useAllProjectDataAsJSON() {
+  const projectsQuery = useProjects();
+  const tasksQuery = useTasks();
+  const issuesQuery = useIssues();
+  const communicationsQuery = useCommunications();
+  const usersQuery = useUsers();
+
+  return useQuery({
+    queryKey: ["all-data-json"],
+    queryFn: () => {
+      // Combine all data into a structured JSON format
+      return {
+        projects: projectsQuery.data || [],
+        tasks: tasksQuery.data || [],
+        issues: issuesQuery.data || [],
+        communications: communicationsQuery.data || [],
+        users: usersQuery.data || [],
+        summary: {
+          totalProjects: (projectsQuery.data || []).length,
+          totalTasks: (tasksQuery.data || []).length,
+          totalIssues: (issuesQuery.data || []).length,
+          totalCommunications: (communicationsQuery.data || []).length,
+          totalUsers: (usersQuery.data || []).length,
+        },
+      };
+    },
+    enabled:
+      !projectsQuery.isLoading &&
+      !tasksQuery.isLoading &&
+      !issuesQuery.isLoading &&
+      !communicationsQuery.isLoading &&
+      !usersQuery.isLoading &&
+      !projectsQuery.isError &&
+      !tasksQuery.isError &&
+      !issuesQuery.isError &&
+      !communicationsQuery.isError &&
+      !usersQuery.isError,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+}

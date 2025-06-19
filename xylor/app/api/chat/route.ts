@@ -14,34 +14,70 @@ export async function POST(req: NextRequest) {
     console.log("Chat API: Request received");
 
     const body = await req.json();
-    console.log("Chat API: Request body:", JSON.stringify(body, null, 2));
+    console.log("Chat API: Request body keys:", Object.keys(body));
 
     const {
       messages,
       taggedContext,
+      structuredData,
     }: {
       messages: CoreMessage[];
       taggedContext?: TaggedContext[];
+      structuredData?: unknown;
     } = body;
 
     console.log("Chat API: Messages count:", messages?.length || 0);
     console.log("Chat API: Tagged context count:", taggedContext?.length || 0);
+    console.log("Chat API: Structured data available:", !!structuredData);
 
-    // Build system message with ERPNext context if provided
-    let systemMessage =
-      "You are an AI assistant helping with ERPNext project management.";
+    // Build comprehensive system message with ERPNext context
+    let systemMessage = `You are an AI assistant specialized in ERPNext project management and business operations. You help users understand and manage their projects, tasks, issues, communications, and business data.
 
+CAPABILITIES:
+- Analyze project status, progress, and performance
+- Identify overdue tasks and bottlenecks
+- Summarize communications and activities
+- Provide insights on resource allocation and priorities
+- Help with project planning and task management
+- Answer questions about business metrics and KPIs
+
+RESPONSE GUIDELINES:
+- Be concise but comprehensive in your answers
+- Use specific data points and numbers when available
+- Highlight important deadlines, overdue items, and priority issues
+- Provide actionable recommendations when appropriate
+- Format responses clearly with bullet points or sections when helpful`;
+
+    // Add tagged context if provided
     if (taggedContext && taggedContext.length > 0) {
-      systemMessage +=
-        "\n\nYou have access to the following ERPNext context:\n";
+      systemMessage += `\n\nUSER-TAGGED CONTEXT:
+The user has specifically tagged the following items for focus:`;
       taggedContext.forEach((item: TaggedContext) => {
-        systemMessage += `- ${item.type}: ${item.name} (ID: ${item.id})\n`;
+        systemMessage += `\n- ${item.type.toUpperCase()}: ${item.name} (ID: ${
+          item.id
+        })`;
       });
-      systemMessage +=
-        "\nUse this context to provide relevant and specific answers about the user's projects, tasks, issues, and communications.";
+      systemMessage += `\n\nWhen answering questions, prioritize information related to these tagged items.`;
     }
 
+    // Add raw structured data if available
+    if (structuredData) {
+      systemMessage += `\n\nCOMPREHENSIVE ERPNEXT DATA:
+You have access to the user's complete ERPNext data. Use this data to provide specific, accurate, and detailed responses.
+
+RAW DATA:
+${JSON.stringify(structuredData, null, 2)}
+
+The complete data is available for detailed analysis. Reference specific projects, tasks, dates, percentages, and other metrics from this data when answering questions.`;
+    }
+
+    systemMessage += `\n\nIMPORTANT: Always provide specific, data-driven answers using the actual information from the ERPNext system. When mentioning projects, tasks, or other items, use their real names and current status from the data.`;
+
     console.log("Chat API: System message length:", systemMessage.length);
+    console.log(
+      "Chat API: System message preview:",
+      systemMessage.substring(0, 200) + "..."
+    );
 
     // Prepare messages with system context
     const messagesWithContext: CoreMessage[] = [
@@ -82,7 +118,7 @@ export async function POST(req: NextRequest) {
     const result = streamText({
       model,
       messages: messagesWithContext,
-      maxTokens: 1000,
+      maxTokens: 2000, // Increased for more detailed responses
       temperature: 0.7,
     });
 
