@@ -100,7 +100,7 @@ Answer user questions about this data. Keep responses simple and direct.
         
         # Simple greeting
         if userdata.context_received:
-            greeting = f"Hi! I have data for {len(userdata.tagged_context)} items. What would you like to know?"
+            greeting = f"Hi! What would you like to know?"
         else:
             greeting = "Hi! Please tag some projects or tasks so I can help you."
         
