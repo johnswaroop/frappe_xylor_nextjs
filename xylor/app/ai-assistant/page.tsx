@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useChat } from "@ai-sdk/react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Pin,
   PinOff,
@@ -148,8 +150,124 @@ function AIAssistantChat({
                       : "bg-gray-100 text-gray-900 border border-gray-200"
                   }`}
                 >
-                  <div className="whitespace-pre-wrap text-sm">
-                    {message.content}
+                  <div
+                    className={`text-sm ${
+                      isUser
+                        ? "whitespace-pre-wrap"
+                        : "prose prose-sm max-w-none prose-headings:mt-3 prose-headings:mb-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-code:bg-gray-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-800 prose-pre:text-gray-100 prose-blockquote:border-l-4 prose-blockquote:border-gray-300 prose-blockquote:pl-4 prose-blockquote:italic"
+                    }`}
+                  >
+                    {isUser ? (
+                      message.content
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          // Custom components for better styling
+                          code: ({ children, ...props }) => {
+                            const match = /language-(\w+)/.exec(
+                              props.className || ""
+                            );
+                            const isInline = !match;
+
+                            return isInline ? (
+                              <code
+                                className="bg-gray-200 text-gray-800 px-1 py-0.5 rounded text-xs font-mono"
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            ) : (
+                              <code
+                                className="block bg-gray-800 text-gray-100 p-3 rounded-lg text-xs font-mono overflow-x-auto"
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            );
+                          },
+                          pre: ({ children }) => (
+                            <pre className="bg-gray-800 text-gray-100 p-3 rounded-lg overflow-x-auto my-2">
+                              {children}
+                            </pre>
+                          ),
+                          ul: ({ children }) => (
+                            <ul className="list-disc pl-4 my-2 space-y-1">
+                              {children}
+                            </ul>
+                          ),
+                          ol: ({ children }) => (
+                            <ol className="list-decimal pl-4 my-2 space-y-1">
+                              {children}
+                            </ol>
+                          ),
+                          li: ({ children }) => (
+                            <li className="text-sm">{children}</li>
+                          ),
+                          h1: ({ children }) => (
+                            <h1 className="text-lg font-semibold mt-4 mb-2 text-gray-900">
+                              {children}
+                            </h1>
+                          ),
+                          h2: ({ children }) => (
+                            <h2 className="text-base font-semibold mt-3 mb-2 text-gray-900">
+                              {children}
+                            </h2>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="text-sm font-semibold mt-3 mb-2 text-gray-900">
+                              {children}
+                            </h3>
+                          ),
+                          p: ({ children }) => (
+                            <p className="text-sm leading-relaxed my-1">
+                              {children}
+                            </p>
+                          ),
+                          blockquote: ({ children }) => (
+                            <blockquote className="border-l-4 border-gray-300 pl-4 my-2 italic text-gray-700">
+                              {children}
+                            </blockquote>
+                          ),
+                          strong: ({ children }) => (
+                            <strong className="font-semibold text-gray-900">
+                              {children}
+                            </strong>
+                          ),
+                          em: ({ children }) => (
+                            <em className="italic">{children}</em>
+                          ),
+                          table: ({ children }) => (
+                            <div className="overflow-x-auto my-2">
+                              <table className="min-w-full border border-gray-200 text-xs">
+                                {children}
+                              </table>
+                            </div>
+                          ),
+                          thead: ({ children }) => (
+                            <thead className="bg-gray-50">{children}</thead>
+                          ),
+                          tbody: ({ children }) => <tbody>{children}</tbody>,
+                          tr: ({ children }) => (
+                            <tr className="border-b border-gray-200">
+                              {children}
+                            </tr>
+                          ),
+                          th: ({ children }) => (
+                            <th className="px-3 py-2 text-left font-medium text-gray-900 border-r border-gray-200">
+                              {children}
+                            </th>
+                          ),
+                          td: ({ children }) => (
+                            <td className="px-3 py-2 text-gray-700 border-r border-gray-200">
+                              {children}
+                            </td>
+                          ),
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    )}
                     {isStreaming && (
                       <span className="inline-block w-2 h-4 bg-current opacity-75 animate-pulse ml-1" />
                     )}
