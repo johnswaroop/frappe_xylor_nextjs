@@ -53,6 +53,31 @@ export interface Communication {
   modified: string;
 }
 
+export interface Comment {
+  name: string;
+  comment_type: string;
+  content: string;
+  comment_email: string;
+  comment_by: string;
+  reference_doctype: string;
+  reference_name: string;
+  creation: string;
+  modified: string;
+}
+
+export interface ActivityLog {
+  name: string;
+  subject: string;
+  content?: string;
+  user: string;
+  operation: string;
+  reference_doctype: string;
+  reference_name: string;
+  ip_address?: string;
+  creation: string;
+  modified: string;
+}
+
 export interface User {
   name: string;
   email: string;
@@ -319,6 +344,118 @@ export async function getCommunicationsByReference(
     `/api/resource/Communication?fields=${JSON.stringify(
       fields
     )}&filters=${filters}&limit_page_length=1000`
+  );
+
+  return response.data || [];
+}
+
+// Comment API functions
+export async function getComments(): Promise<Comment[]> {
+  const fields = [
+    "name",
+    "comment_type",
+    "content",
+    "comment_email",
+    "comment_by",
+    "reference_doctype",
+    "reference_name",
+    "creation",
+    "modified",
+  ];
+
+  const response = await frappeRequest<FrappeListResponse<Comment>>(
+    `/api/resource/Comment?fields=${JSON.stringify(
+      fields
+    )}&limit_page_length=1000&order_by=creation%20desc`
+  );
+
+  return response.data || [];
+}
+
+export async function getCommentsByReference(
+  doctype: string,
+  name: string
+): Promise<Comment[]> {
+  const fields = [
+    "name",
+    "comment_type",
+    "content",
+    "comment_email",
+    "comment_by",
+    "reference_doctype",
+    "reference_name",
+    "creation",
+    "modified",
+  ];
+
+  const filters = JSON.stringify([
+    ["reference_doctype", "=", doctype],
+    ["reference_name", "=", name],
+  ]);
+
+  const response = await frappeRequest<FrappeListResponse<Comment>>(
+    `/api/resource/Comment?fields=${JSON.stringify(
+      fields
+    )}&filters=${filters}&limit_page_length=1000&order_by=creation%20desc`
+  );
+
+  return response.data || [];
+}
+
+// Activity Log API functions
+export async function getActivityLogs(): Promise<ActivityLog[]> {
+  const fields = [
+    "name",
+    "subject",
+    "content",
+    "user",
+    "operation",
+    "reference_doctype",
+    "reference_name",
+    "ip_address",
+    "creation",
+    "modified",
+  ];
+
+  const filters = JSON.stringify([
+    ["reference_doctype", "in", ["Project", "Task", "Issue"]],
+  ]);
+
+  const response = await frappeRequest<FrappeListResponse<ActivityLog>>(
+    `/api/resource/Activity Log?fields=${JSON.stringify(
+      fields
+    )}&filters=${filters}&limit_page_length=1000&order_by=creation%20desc`
+  );
+
+  return response.data || [];
+}
+
+export async function getActivityLogsByReference(
+  doctype: string,
+  name: string
+): Promise<ActivityLog[]> {
+  const fields = [
+    "name",
+    "subject",
+    "content",
+    "user",
+    "operation",
+    "reference_doctype",
+    "reference_name",
+    "ip_address",
+    "creation",
+    "modified",
+  ];
+
+  const filters = JSON.stringify([
+    ["reference_doctype", "=", doctype],
+    ["reference_name", "=", name],
+  ]);
+
+  const response = await frappeRequest<FrappeListResponse<ActivityLog>>(
+    `/api/resource/Activity Log?fields=${JSON.stringify(
+      fields
+    )}&filters=${filters}&limit_page_length=1000&order_by=creation%20desc`
   );
 
   return response.data || [];

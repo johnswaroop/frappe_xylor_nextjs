@@ -8,6 +8,10 @@ import {
   getIssuesByProject,
   getCommunications,
   getCommunicationsByReference,
+  getComments,
+  getCommentsByReference,
+  getActivityLogs,
+  getActivityLogsByReference,
   getUsers,
   getCurrentUser,
   searchProjects,
@@ -115,6 +119,46 @@ export function useCommunicationsByReference(doctype: string, name: string) {
   });
 }
 
+// Comments
+export function useComments() {
+  return useQuery({
+    queryKey: ["comments"],
+    queryFn: getComments,
+    staleTime: 1 * 60 * 1000, // 1 minute
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useCommentsByReference(doctype: string, name: string) {
+  return useQuery({
+    queryKey: ["comments", "reference", doctype, name],
+    queryFn: () => getCommentsByReference(doctype, name),
+    enabled: !!(doctype && name),
+    staleTime: 1 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+// Activity Logs
+export function useActivityLogs() {
+  return useQuery({
+    queryKey: ["activityLogs"],
+    queryFn: getActivityLogs,
+    staleTime: 1 * 60 * 1000, // 1 minute
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useActivityLogsByReference(doctype: string, name: string) {
+  return useQuery({
+    queryKey: ["activityLogs", "reference", doctype, name],
+    queryFn: () => getActivityLogsByReference(doctype, name),
+    enabled: !!(doctype && name),
+    staleTime: 1 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
 // Users
 export function useUsers() {
   return useQuery({
@@ -143,27 +187,37 @@ export function useProjectData(projectId: string) {
     "Project",
     projectId
   );
+  const commentsQuery = useCommentsByReference("Project", projectId);
+  const activityLogsQuery = useActivityLogsByReference("Project", projectId);
 
   return {
     project: projectQuery,
     tasks: tasksQuery,
     issues: issuesQuery,
     communications: communicationsQuery,
+    comments: commentsQuery,
+    activityLogs: activityLogsQuery,
     isLoading:
       projectQuery.isLoading ||
       tasksQuery.isLoading ||
       issuesQuery.isLoading ||
-      communicationsQuery.isLoading,
+      communicationsQuery.isLoading ||
+      commentsQuery.isLoading ||
+      activityLogsQuery.isLoading,
     isError:
       projectQuery.isError ||
       tasksQuery.isError ||
       issuesQuery.isError ||
-      communicationsQuery.isError,
+      communicationsQuery.isError ||
+      commentsQuery.isError ||
+      activityLogsQuery.isError,
     error:
       projectQuery.error ||
       tasksQuery.error ||
       issuesQuery.error ||
-      communicationsQuery.error,
+      communicationsQuery.error ||
+      commentsQuery.error ||
+      activityLogsQuery.error,
   };
 }
 
@@ -172,6 +226,8 @@ export function useAllData() {
   const tasksQuery = useTasks();
   const issuesQuery = useIssues();
   const communicationsQuery = useCommunications();
+  const commentsQuery = useComments();
+  const activityLogsQuery = useActivityLogs();
   const usersQuery = useUsers();
 
   return {
@@ -179,24 +235,32 @@ export function useAllData() {
     tasks: tasksQuery,
     issues: issuesQuery,
     communications: communicationsQuery,
+    comments: commentsQuery,
+    activityLogs: activityLogsQuery,
     users: usersQuery,
     isLoading:
       projectsQuery.isLoading ||
       tasksQuery.isLoading ||
       issuesQuery.isLoading ||
       communicationsQuery.isLoading ||
+      commentsQuery.isLoading ||
+      activityLogsQuery.isLoading ||
       usersQuery.isLoading,
     isError:
       projectsQuery.isError ||
       tasksQuery.isError ||
       issuesQuery.isError ||
       communicationsQuery.isError ||
+      commentsQuery.isError ||
+      activityLogsQuery.isError ||
       usersQuery.isError,
     error:
       projectsQuery.error ||
       tasksQuery.error ||
       issuesQuery.error ||
       communicationsQuery.error ||
+      commentsQuery.error ||
+      activityLogsQuery.error ||
       usersQuery.error,
   };
 }
@@ -207,6 +271,8 @@ export function useAllProjectDataAsJSON() {
   const tasksQuery = useTasks();
   const issuesQuery = useIssues();
   const communicationsQuery = useCommunications();
+  const commentsQuery = useComments();
+  const activityLogsQuery = useActivityLogs();
   const usersQuery = useUsers();
 
   return useQuery({
@@ -218,12 +284,16 @@ export function useAllProjectDataAsJSON() {
         tasks: tasksQuery.data || [],
         issues: issuesQuery.data || [],
         communications: communicationsQuery.data || [],
+        comments: commentsQuery.data || [],
+        activityLogs: activityLogsQuery.data || [],
         users: usersQuery.data || [],
         summary: {
           totalProjects: (projectsQuery.data || []).length,
           totalTasks: (tasksQuery.data || []).length,
           totalIssues: (issuesQuery.data || []).length,
           totalCommunications: (communicationsQuery.data || []).length,
+          totalComments: (commentsQuery.data || []).length,
+          totalActivityLogs: (activityLogsQuery.data || []).length,
           totalUsers: (usersQuery.data || []).length,
         },
       };
@@ -233,13 +303,79 @@ export function useAllProjectDataAsJSON() {
       !tasksQuery.isLoading &&
       !issuesQuery.isLoading &&
       !communicationsQuery.isLoading &&
+      !commentsQuery.isLoading &&
+      !activityLogsQuery.isLoading &&
       !usersQuery.isLoading &&
       !projectsQuery.isError &&
       !tasksQuery.isError &&
       !issuesQuery.isError &&
       !communicationsQuery.isError &&
+      !commentsQuery.isError &&
+      !activityLogsQuery.isError &&
       !usersQuery.isError,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+}
+
+// Specialized hook for getting all project activities (comments, communications, activity logs)
+export function useProjectActivities(projectId: string) {
+  const communicationsQuery = useCommunicationsByReference(
+    "Project",
+    projectId
+  );
+  const commentsQuery = useCommentsByReference("Project", projectId);
+  const activityLogsQuery = useActivityLogsByReference("Project", projectId);
+
+  return useQuery({
+    queryKey: ["project", projectId, "activities"],
+    queryFn: () => {
+      const communications = communicationsQuery.data || [];
+      const comments = commentsQuery.data || [];
+      const activityLogs = activityLogsQuery.data || [];
+
+      // Combine all activities with a unified structure
+      const allActivities = [
+        ...communications.map((comm) => ({
+          id: comm.name,
+          type: "communication" as const,
+          content: comm.content,
+          subject: comm.subject,
+          author: comm.sender,
+          date: comm.communication_date,
+          raw: comm,
+        })),
+        ...comments.map((comment) => ({
+          id: comment.name,
+          type: "comment" as const,
+          content: comment.content,
+          subject: null,
+          author: comment.comment_by,
+          date: comment.creation,
+          raw: comment,
+        })),
+        ...activityLogs.map((log) => ({
+          id: log.name,
+          type: "activity_log" as const,
+          content: log.content || log.subject,
+          subject: log.subject,
+          author: log.user,
+          date: log.creation,
+          raw: log,
+        })),
+      ];
+
+      // Sort by date (newest first)
+      return allActivities.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    },
+    enabled:
+      !!projectId &&
+      !communicationsQuery.isLoading &&
+      !commentsQuery.isLoading &&
+      !activityLogsQuery.isLoading,
+    staleTime: 1 * 60 * 1000, // 1 minute
     refetchOnWindowFocus: false,
   });
 }
