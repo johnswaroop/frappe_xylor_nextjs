@@ -12,6 +12,9 @@ import {
   getCurrentUser,
   searchProjects,
   getProjectSummary,
+  getCustomers,
+  getCustomer,
+  getProjectCustomer,
 } from "@/lib/api/frappe";
 
 // Projects
@@ -238,5 +241,136 @@ export function useAllProjectDataAsJSON() {
       !usersQuery.isError,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
+  });
+}
+
+// Enhanced hooks for getting emails and customer data
+export function useProjectEmails(projectId: string) {
+  const projectQuery = useProject(projectId);
+  const usersQuery = useUsers();
+
+  return useQuery({
+    queryKey: ["project", projectId, "emails"],
+    queryFn: async () => {
+      const project = projectQuery.data;
+      const users = usersQuery.data || [];
+
+      if (!project) return null;
+
+      // Get emails of users associated with the project
+      // You might need to enhance this based on how user-project relationships are stored in Frappe
+      const projectEmails = {
+        customer: project.customer, // This might need to be resolved to actual email
+        teamEmails: users
+          .map((user) => ({
+            name: user.full_name,
+            email: user.email,
+            enabled: user.enabled,
+          }))
+          .filter((user) => user.enabled), // Only active users
+      };
+
+      return projectEmails;
+    },
+    enabled: !!projectQuery.data && !!usersQuery.data,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+export function useActiveUserEmails() {
+  return useQuery({
+    queryKey: ["users", "emails", "active"],
+    queryFn: async () => {
+      const users = await getUsers();
+      return users
+        .filter((user) => user.enabled === 1)
+        .map((user) => ({
+          name: user.full_name,
+          email: user.email,
+          userId: user.name,
+        }));
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    refetchOnWindowFocus: false,
+  });
+}
+
+// Customer hooks
+export function useCustomers() {
+  return useQuery({
+    queryKey: ["customers"],
+    queryFn: getCustomers,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useCustomer(customerId: string) {
+  return useQuery({
+    queryKey: ["customer", customerId],
+    queryFn: () => getCustomer(customerId),
+    enabled: !!customerId,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useProjectCustomer(projectId: string) {
+  return useQuery({
+    queryKey: ["project", projectId, "customer"],
+    queryFn: () => getProjectCustomer(projectId),
+    enabled: !!projectId,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+// Enhanced project emails hook with customer data
+export function useProjectEmailsComplete(projectId: string) {
+  const projectQuery = useProject(projectId);
+  const usersQuery = useUsers();
+  const customerQuery = useProjectCustomer(projectId);
+
+  return useQuery({
+    queryKey: ["project", projectId, "emails", "complete"],
+    queryFn: async () => {
+      const project = projectQuery.data;
+      const users = usersQuery.data || [];
+      const customer = customerQuery.data;
+
+      if (!project) return null;
+
+      // Get all email contacts for this project
+      return {
+        project: {
+          name: project.project_name,
+          id: project.name,
+        },
+        customer: customer
+          ? {
+              name: customer.customer_name,
+              email: customer.email_id || null,
+              phone: customer.phone || customer.mobile_no || null,
+            }
+          : null,
+        teamEmails: users
+          .filter((user) => user.enabled === 1)
+          .map((user) => ({
+            name: user.full_name,
+            email: user.email,
+            userId: user.name,
+          })),
+        allEmails: [
+          // Customer email if available
+          ...(customer?.email_id ? [customer.email_id] : []),
+          // All active user emails
+          ...users
+            .filter((user) => user.enabled === 1)
+            .map((user) => user.email),
+        ].filter(Boolean), // Remove any null/undefined emails
+      };
+    },
+    enabled: !!projectQuery.data && !!usersQuery.data,
+    staleTime: 10 * 60 * 1000, // 10 minutes
   });
 }

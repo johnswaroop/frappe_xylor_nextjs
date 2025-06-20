@@ -63,6 +63,20 @@ export interface User {
   modified: string;
 }
 
+export interface Customer {
+  name: string;
+  customer_name: string;
+  customer_type: string;
+  customer_group?: string;
+  territory?: string;
+  email_id?: string;
+  mobile_no?: string;
+  phone?: string;
+  website?: string;
+  creation: string;
+  modified: string;
+}
+
 // API Response interfaces
 interface FrappeListResponse<T> {
   data: T[];
@@ -370,4 +384,54 @@ export async function getProjectSummary(
   );
 
   return response;
+}
+
+// Customer API functions
+export async function getCustomers(): Promise<Customer[]> {
+  const fields = [
+    "name",
+    "customer_name",
+    "customer_type",
+    "customer_group",
+    "territory",
+    "email_id",
+    "mobile_no",
+    "phone",
+    "website",
+    "creation",
+    "modified",
+  ];
+
+  const response = await frappeRequest<FrappeListResponse<Customer>>(
+    `/api/resource/Customer?fields=${JSON.stringify(
+      fields
+    )}&limit_page_length=1000`
+  );
+
+  return response.data || [];
+}
+
+export async function getCustomer(customerId: string): Promise<Customer> {
+  const response = await frappeRequest<FrappeDocResponse<Customer>>(
+    `/api/resource/Customer/${customerId}`
+  );
+
+  return response.data;
+}
+
+export async function getProjectCustomer(
+  projectId: string
+): Promise<Customer | null> {
+  const project = await getProject(projectId);
+
+  if (!project.customer) {
+    return null;
+  }
+
+  try {
+    return await getCustomer(project.customer);
+  } catch (error) {
+    console.error("Error fetching project customer:", error);
+    return null;
+  }
 }
